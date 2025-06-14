@@ -91,3 +91,37 @@ export interface Tweet {
     headers: string[];
     rows: any[][];
   }
+
+  // Google Drive関連の型
+  export interface DriveFileInfo {
+    id: string;
+    name: string;
+    mimeType: string;
+    parents?: string[];
+    webViewLink?: string;
+    createdTime?: string;
+    modifiedTime?: string;
+    size?: string;
+  }
+
+  export interface SharedDriveInfo {
+    id: string;
+    name: string;
+    createdTime?: string;
+  }
+
+  export interface DriveUploadConfig {
+    driveId: string;
+    fileName: string;
+    fileContent: string;
+    mimeType?: string;
+    parentFolderId?: string;
+  }
+
+  export interface XCollectionProjectConfig {
+    driveId: string;
+    projectName: string;
+    parentFolderId?: string;
+    includeFolders?: string[];
+    createSpreadsheet?: boolean;
+  }
