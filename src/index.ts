@@ -5,7 +5,7 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { MCPToolHandlers } from './tools/tool-handlers.js';
+import { MCPToolHandlers } from './tools/tool-handlers-refactored.js';
 
 /**
  * X Collector MCP Server
@@ -14,6 +14,7 @@ import { MCPToolHandlers } from './tools/tool-handlers.js';
  * - Puppeteerによる人間らしいブラウザ操作
  * - X(Twitter)からのデータ収集（ツイート、プロフィール）
  * - Google Sheetsへの自動出力・追記
+ * - Google Driveでの共有ドライブ管理
  * - Claude Desktop MCP連携
  */
 class XCollectorServer {
@@ -25,8 +26,8 @@ class XCollectorServer {
     this.server = new Server(
       {
         name: "x-collector",
-        version: "0.3.0", // リファクタリング版
-        description: "X(Twitter) data collection with human-like behavior and Google Sheets integration"
+        version: "0.4.0", // リファクタリング版 + Google Drive統合
+        description: "X(Twitter) data collection with human-like behavior, Google Sheets integration, and Google Drive management"
       },
       {
         capabilities: {
@@ -35,7 +36,7 @@ class XCollectorServer {
       }
     );
 
-    // ツールハンドラーの初期化
+    // ツールハンドラーの初期化（リファクタリング版）
     this.toolHandlers = new MCPToolHandlers();
     
     // ハンドラーをサーバーに設定
@@ -54,9 +55,22 @@ class XCollectorServer {
       await this.server.connect(transport);
       
       console.error("🚀 X Collector MCP Server running on stdio");
-      console.error("📊 Version: 0.3.0 (Refactored)");
-      console.error("🔧 Capabilities: Browser automation, Twitter data collection, Google Sheets integration");
+      console.error("📊 Version: 0.4.0 (Refactored + Google Drive)");
+      console.error("🔧 Capabilities:");
+      console.error("  • Browser automation with human-like behavior");
+      console.error("  • Twitter/X data collection and analysis");
+      console.error("  • Google Sheets integration with smart append");
+      console.error("  • Google Drive shared folder management");
+      console.error("  • Project template creation and organization");
       console.error("💡 Ready for Claude Desktop connection...");
+      
+      // サービス状態の表示
+      const status = this.toolHandlers.getServiceStatus();
+      console.error("🔗 Service Status:");
+      console.error(`  • Browser: ${status.browser ? 'Ready' : 'Standby'}`);
+      console.error(`  • Twitter: ${status.twitter ? 'Connected' : 'Standby'}`);
+      console.error(`  • Sheets: ${status.sheets ? 'Authenticated' : 'Standby'}`);
+      console.error(`  • Drive: ${status.drive ? 'Authenticated' : 'Standby'}`);
     } catch (error) {
       console.error("❌ Failed to start X Collector MCP Server:", error);
       process.exit(1);
