@@ -1,0 +1,39 @@
+{
+  "name": "x-collector-mcp",
+  "version": "0.1.0",
+  "description": "X情報収集用MCP - 人間らしい操作で安全にデータ取得",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "x-collector-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "rebuild": "pnpm run clean && pnpm run build"
+  },
+  "keywords": [
+    "mcp",
+    "x",
+    "twitter",
+    "data-collection"
+  ],
+  "author": "takumi",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.2",
+    "google-auth-library": "^10.1.0",
+    "googleapis": "^150.0.1",
+    "puppeteer": "^24.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.1",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}
