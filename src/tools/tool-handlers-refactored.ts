@@ -78,12 +78,12 @@ export class MCPToolHandlers {
 
         // 1. ブラウザ関連ツール
         result = await this.browserHandler.handleTool(name, args);
-        if (result) return { result: result.content };
+        if (result) return { content: result.content };
 
         // 2. Twitter関連ツール
         const twitterService = this.browserHandler.getTwitterService();
         result = await this.twitterHandler.handleTool(name, args, twitterService);
-        if (result) return { result: result.content };
+        if (result) return { content: result.content };
 
         // 3. Google Sheets関連ツール
         result = await this.sheetsHandler.handleTool(
@@ -92,11 +92,11 @@ export class MCPToolHandlers {
           this.twitterHandler.getLastCollectedTweets(),
           this.twitterHandler.getLastCollectedProfile()
         );
-        if (result) return { result: result.content };
+        if (result) return { content: result.content };
 
         // 4. Google Drive関連ツール
         result = await this.driveHandler.handleTool(name, args);
-        if (result) return { result: result.content };
+        if (result) return { content: result.content };
 
         // どのハンドラーでも処理されなかった場合
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
