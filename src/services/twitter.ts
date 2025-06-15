@@ -1,5 +1,5 @@
 // src/services/twitter.ts
-// X(Twitter)操作の専用サービス
+// X(Twitter)操作の専用サービス - 2025年最新DOM構造対応版
 
 import { Page } from 'puppeteer';
 import { Tweet, UserProfile, MCPResponse, CollectionConfig, SearchConfig } from '../types/interfaces.js';
@@ -202,11 +202,68 @@ export class TwitterService {
   }
 
   /**
-   * ページからツイートを抽出
+   * ページからツイートを抽出 - 2025年最新版
    */
   private async extractTweets(): Promise<Tweet[]> {
     return this.page.evaluate(() => {
-      const tweetElements = document.querySelectorAll('[data-testid="tweet"]');
+      console.log('🔍 ツイート抽出開始...');
+
+      // 🔧 修正: 複数のセレクターパターンを試行
+      const possibleSelectors = [
+        '[data-testid="tweet"]',
+        'article[data-testid="tweet"]',
+        '[data-testid="cellInnerDiv"] article',
+        'article[role="article"]',
+        'div[data-testid="tweet"]',
+        '[data-testid="tweetText"]' // テキストから逆算
+      ];
+
+      let tweetElements: NodeListOf<Element> | null = null;
+      let workingSelector = '';
+      
+      // 各セレクターを順番に試す
+      for (const selector of possibleSelectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          console.log(`✅ 使用可能セレクター: ${selector} (${elements.length}個の要素)`);
+          tweetElements = elements;
+          workingSelector = selector;
+          break;
+        } else {
+          console.log(`❌ セレクター失敗: ${selector}`);
+        }
+      }
+
+      if (!tweetElements || tweetElements.length === 0) {
+        console.log(`❌ 全セレクターでツイート要素が見つかりません。フォールバック抽出を試行...`);
+        
+        // 🆕 フォールバック: テキストベース抽出
+        const allElements = Array.from(document.querySelectorAll('*'));
+        const tweetCandidates: Element[] = [];
+        
+        allElements.forEach(el => {
+          const text = el.textContent || '';
+          
+          // ツイートらしい特徴を持つ要素を探す
+          if (text.length > 20 && text.length < 1000 && 
+              !el.querySelector('input') && 
+              !el.querySelector('button') &&
+              (text.includes('@') || text.match(/\d+[hms]|時間前|分前|時|分/))) {
+            tweetCandidates.push(el);
+          }
+        });
+        
+        console.log(`🔄 フォールバック抽出: ${tweetCandidates.length}個の候補を発見`);
+        
+        if (tweetCandidates.length > 0) {
+          tweetElements = tweetCandidates.slice(0, 10) as any; // 最大10個
+          workingSelector = 'フォールバック抽出';
+        } else {
+          console.log(`❌ フォールバック抽出も失敗。ツイートが存在しないかページ構造が大幅変更されています。`);
+          return [];
+        }
+      }
+
       const tweets: Array<{
         id: string;
         text: string;
@@ -219,27 +276,110 @@ export class TwitterService {
         originalAuthor?: string;
       }> = [];
 
-      tweetElements.forEach((element: Element, index: number) => {
+      console.log(`📊 ${tweetElements?.length || 0}個の要素を処理中... (セレクター: ${workingSelector})`);
+
+      tweetElements?.forEach((element: Element, index: number) => {
         try {
-          const textElement = element.querySelector('[data-testid="tweetText"]');
-          const timeElement = element.querySelector('time');
-          const authorElement = element.querySelector('[data-testid="User-Name"] a[role="link"]');
-          
-          // エンゲージメント数を取得
-          const likeElement = element.querySelector('[data-testid="like"] span');
-          const retweetElement = element.querySelector('[data-testid="retweet"] span');
-          const replyElement = element.querySelector('[data-testid="reply"] span');
+          // 🔧 修正: より柔軟なテキスト抽出
+          const extractTweetText = (el: Element): string => {
+            // 複数のパターンでテキストを探す
+            const textSelectors = [
+              '[data-testid="tweetText"]',
+              '[lang] span',
+              'div[lang]',
+              'span[lang]',
+              '[dir="auto"]'
+            ];
+            
+            for (const selector of textSelectors) {
+              const textEl = el.querySelector(selector);
+              if (textEl?.textContent?.trim()) {
+                return textEl.textContent.trim();
+              }
+            }
+            
+            // フォールバック: 要素全体のテキスト
+            const fullText = el.textContent?.trim() || '';
+            
+            // 長すぎるテキストは先頭部分のみ取得
+            if (fullText.length > 500) {
+              return fullText.substring(0, 280) + '...';
+            }
+            
+            return fullText;
+          };
 
-          const text = textElement?.textContent || '';
-          const timestamp = timeElement?.getAttribute('datetime') || '';
-          const authorHref = authorElement?.getAttribute('href') || '';
-          const author = authorHref.replace('/', '').replace('/', '');
+          // 🔧 修正: より柔軟な時刻抽出
+          const extractTimestamp = (el: Element): string => {
+            const timeEl = el.querySelector('time');
+            if (timeEl) {
+              return timeEl.getAttribute('datetime') || timeEl.textContent || '';
+            }
+            
+            // フォールバック: 相対時間を探す
+            const text = el.textContent || '';
+            const relativeTime = text.match(/(\d+[hms]|\d+時間前|\d+分前|\d+時|\d+分)/);
+            return relativeTime ? relativeTime[0] : new Date().toISOString();
+          };
 
-          // 数値の抽出（K, M表記も考慮）
-          const parseEngagement = (text: string) => {
-            if (!text) return 0;
-            const match = text.match(/([\d,]+\.?\d*)\s*([KMB]?)/i);
-            if (!match) return 0;
+          // 🔧 修正: より柔軟な作者抽出
+          const extractAuthor = (el: Element): string => {
+            const authorSelectors = [
+              '[data-testid="User-Name"] a[role="link"]',
+              '[data-testid="User-Names"] a[role="link"]',
+              'a[href^="/"]',
+              '[href^="/"][role="link"]'
+            ];
+            
+            for (const selector of authorSelectors) {
+              const authorEl = el.querySelector(selector);
+              if (authorEl) {
+                const href = authorEl.getAttribute('href');
+                if (href && href.startsWith('/') && !href.includes('/status/')) {
+                  return href.slice(1); // "/" を除去
+                }
+              }
+            }
+            
+            // フォールバック: @ユーザー名を探す
+            const text = el.textContent || '';
+            const userMatch = text.match(/@([a-zA-Z0-9_]+)/);
+            return userMatch ? userMatch[1] : `extracted_user_${index}`;
+          };
+
+          // 🔧 修正: エンゲージメント数の抽出
+          const extractEngagement = (el: Element, type: 'like' | 'retweet' | 'reply'): number => {
+            const testIds = {
+              like: ['like', 'favorite'],
+              retweet: ['retweet', 'unretweet'],
+              reply: ['reply']
+            };
+            
+            for (const testId of testIds[type]) {
+              const engagementEl = el.querySelector(`[data-testid="${testId}"] span`);
+              if (engagementEl?.textContent) {
+                const num = parseEngagement(engagementEl.textContent);
+                if (num > 0) return num;
+              }
+            }
+            
+            // フォールバック: テキストから数字を抽出
+            const text = el.textContent || '';
+            const numbers = text.match(/\d+/g);
+            return numbers ? parseInt(numbers[0]) : 0;
+          };
+
+          // parseEngagement関数の定義（ページ内で実行されるため再定義が必要）
+          const parseEngagement = (text: string): number => {
+            if (!text || typeof text !== 'string') return 0;
+            
+            const cleanText = text.replace(/[^\d.,KMBkmb]/gi, '');
+            const match = cleanText.match(/([\d,]+\.?\d*)\s*([KMBkmb]?)/i);
+            
+            if (!match) {
+              const numMatch = text.match(/\d+/);
+              return numMatch ? parseInt(numMatch[0]) : 0;
+            }
             
             let num = parseFloat(match[1].replace(/,/g, ''));
             const suffix = match[2].toUpperCase();
@@ -251,24 +391,101 @@ export class TwitterService {
             return Math.floor(num);
           };
 
+          const text = extractTweetText(element);
+          const timestamp = extractTimestamp(element);
+          const author = extractAuthor(element);
+
+          // 空のツイートや短すぎるものは除外
+          if (!text || text.length < 5) {
+            console.log(`⏭️ ツイート${index + 1}: テキストが短すぎるためスキップ`);
+            return;
+          }
+
+          const likes = extractEngagement(element, 'like');
+          const retweets = extractEngagement(element, 'retweet');
+          const replies = extractEngagement(element, 'reply');
+
           tweets.push({
             id: `tweet_${Date.now()}_${index}`,
             text: text,
             timestamp: timestamp,
             author: author,
-            likes: parseEngagement(likeElement?.textContent || '0'),
-            retweets: parseEngagement(retweetElement?.textContent || '0'),
-            replies: parseEngagement(replyElement?.textContent || '0'),
+            likes: likes,
+            retweets: retweets,
+            replies: replies,
             isRetweet: !!element.querySelector('[data-testid="socialContext"]'),
             originalAuthor: element.querySelector('[data-testid="socialContext"] a')?.textContent || undefined
           });
+
+          console.log(`✅ ツイート${index + 1}: @${author} - ${text.substring(0, 50)}... (👍${likes} 🔄${retweets} 💬${replies})`);
+          
         } catch (error) {
-          console.error('Tweet extraction error:', error);
+          console.error(`❌ ツイート${index + 1}の抽出エラー:`, error);
         }
       });
 
+      console.log(`📊 抽出完了: ${tweets.length}件のツイートを取得しました`);
       return tweets;
     }) as Promise<Tweet[]>;
+  }
+
+  /**
+   * 🆕 デバッグ: ページのDOM構造を調査
+   */
+  async debugPageStructure(): Promise<MCPResponse> {
+    const debug = await this.page.evaluate(() => {
+      const info = {
+        url: window.location.href,
+        title: document.title,
+        possibleTweetSelectors: [] as string[],
+        sampleElements: [] as string[],
+        elementCounts: {} as Record<string, number>
+      };
+
+      // 可能性のあるツイート要素を調査
+      const testSelectors = [
+        '[data-testid="tweet"]',
+        'article[data-testid="tweet"]',
+        '[data-testid="cellInnerDiv"]',
+        'article[role="article"]',
+        '[data-testid="tweetText"]',
+        'div[lang]',
+        'span[lang]',
+        'time',
+        '[datetime]'
+      ];
+
+      testSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        const count = elements.length;
+        info.elementCounts[selector] = count;
+        
+        if (count > 0) {
+          info.possibleTweetSelectors.push(`${selector}: ${count}個`);
+          
+          // 最初の要素のサンプルHTML
+          if (elements[0]) {
+            info.sampleElements.push(
+              `${selector}: ${elements[0].outerHTML.substring(0, 200)}...`
+            );
+          }
+        }
+      });
+
+      return info;
+    });
+
+    return {
+      content: [{
+        type: "text",
+        text: `🔍 ページ構造デバッグ情報\n\n` +
+              `URL: ${debug.url}\n` +
+              `タイトル: ${debug.title}\n\n` +
+              `見つかった要素:\n${debug.possibleTweetSelectors.join('\n')}\n\n` +
+              `要素数詳細:\n${Object.entries(debug.elementCounts).map(([sel, count]) => `${sel}: ${count}`).join('\n')}\n\n` +
+              `サンプルHTML:\n${debug.sampleElements.join('\n\n')}`
+      }]
+    };
   }
 
   /**
