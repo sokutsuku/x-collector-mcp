@@ -102,7 +102,7 @@ export class SheetsService {
       const spreadsheetUrl = response.data.spreadsheetUrl!;
 
       // ヘッダー行を設定
-      await this.setupSheetHeaders(spreadsheetId);
+      // await this.setupSheetHeaders(spreadsheetId);
 
       // メール共有設定
       if (shareWithEmail && this.auth) {
