@@ -9,13 +9,12 @@ import { MCPToolHandlers } from './tools/tool-handlers-refactored.js';
 
 /**
  * X Collector MCP Server
- * 
- * 機能:
+ * * 機能:
  * - Puppeteerによる人間らしいブラウザ操作
  * - X(Twitter)からのデータ収集（ツイート、プロフィール）
  * - Google Sheetsへの自動出力・追記
  * - Google Driveでの共有ドライブ管理
- * - Claude Desktop MCP連携
+ * - AIモデルとのMCP連携
  */
 class XCollectorServer {
   private server: Server;
@@ -27,7 +26,7 @@ class XCollectorServer {
       {
         name: "x-collector",
         version: "0.4.0", // リファクタリング版 + Google Drive統合
-        description: "X(Twitter) data collection with human-like behavior, Google Sheets integration, and Google Drive management"
+        description: "X(Twitter) data collection with human-like behavior, Google Sheets integration, and Google Drive management for AI models"
       },
       {
         capabilities: {
@@ -62,7 +61,7 @@ class XCollectorServer {
       console.error("  • Google Sheets integration with smart append");
       console.error("  • Google Drive shared folder management");
       console.error("  • Project template creation and organization");
-      console.error("💡 Ready for Claude Desktop connection...");
+      console.error("💡 Ready for MCP client connection...");
       
       // サービス状態の表示
       const status = this.toolHandlers.getServiceStatus();

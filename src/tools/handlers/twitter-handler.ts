@@ -222,44 +222,13 @@ export class TwitterToolHandler {
         readingTime
       });
   
-      // 🔧 修正: TwitterServiceから実際のツイートデータを取得
-      // extractTweets()の結果を取得する必要があります
-      // 一時的な解決策として、サンプルデータを生成
-      this.lastCollectedTweets = [
-        {
-          id: `tweet_${Date.now()}_1`,
-          text: "Trump Tweet Content 1 - Sample data from successful collection",
-          timestamp: new Date().toISOString(),
-          author: "realDonaldTrump",
-          likes: 230000,
-          retweets: 43000,
-          replies: 19000,
-          isRetweet: false
-        },
-        {
-          id: `tweet_${Date.now()}_2`,
-          text: "Trump Tweet Content 2 - Sample data with engagement metrics",
-          timestamp: new Date(Date.now() - 86400000).toISOString(), // 1日前
-          author: "realDonaldTrump",
-          likes: 170000,
-          retweets: 30000,
-          replies: 32000,
-          isRetweet: false
-        },
-        {
-          id: `tweet_${Date.now()}_3`,
-          text: "Trump Tweet Content 3 - Sample data for testing export functionality",
-          timestamp: new Date(Date.now() - 172800000).toISOString(), // 2日前
-          author: "realDonaldTrump",
-          likes: 410000,
-          retweets: 62000,
-          replies: 38000,
-          isRetweet: false
-        }
-      ];
+      // 🔧 修正: 実際のツイートデータを使用
+      if (result.tweets) {
+        this.lastCollectedTweets = result.tweets;
+        console.log(`✅ データストレージに${this.lastCollectedTweets.length}件のツイートを保存しました`);
+      }
   
       this.isOperating = false;
-      console.log(`✅ データストレージに${this.lastCollectedTweets.length}件のツイートを保存しました`);
       
       return result;
     } catch (error) {
@@ -274,7 +243,13 @@ export class TwitterToolHandler {
     }
 
     const result = await twitterService.getUserProfile();
-    // 実際のプロフィールデータを保存（実装に依存）
+    
+    // プロフィールデータを保存
+    if (result.profile) {
+      this.lastCollectedProfile = result.profile;
+      console.log(`✅ プロフィールデータを保存しました: @${result.profile.username}`);
+    }
+    
     return result;
   }
 
@@ -291,6 +266,12 @@ export class TwitterToolHandler {
       query,
       maxResults
     });
+
+    // 検索結果のツイートを保存
+    if (result.tweets) {
+      this.lastCollectedTweets = result.tweets;
+      console.log(`✅ 検索結果: ${this.lastCollectedTweets.length}件のツイートを保存しました`);
+    }
 
     return result;
   }
@@ -338,7 +319,7 @@ export class TwitterToolHandler {
     }
 
     // TwitterServiceのdebugPageStructure メソッドを呼び出し
-    return await (twitterService as any).debugPageStructure();
+    return await twitterService.debugPageStructure();
   }
 
   private async handleTestTweetSelectors(twitterService: TwitterService | null): Promise<MCPResponse> {

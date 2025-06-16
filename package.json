@@ -1,7 +1,7 @@
 {
   "name": "x-collector-mcp",
   "version": "0.3.0",
-  "description": "X(Twitter) data collection MCP server with human-like behavior and Google Sheets integration",
+  "description": "X(Twitter) data collection MCP server with human-like behavior and Google integration for AI models",
   "type": "module",
   "main": "build/index.js",
   "bin": {
@@ -24,7 +24,10 @@
     "data-collection",
     "puppeteer",
     "google-sheets",
+    "google-drive",
     "claude",
+    "gemini",
+    "llm",
     "automation"
   ],
   "author": "X Collector Team",

@@ -14,6 +14,10 @@ import {
 } from '../utils/selectors.js';
 
 export class TwitterService {
+  // データストレージの追加
+  private lastCollectedTweets: Tweet[] = [];
+  private lastCollectedProfile: UserProfile | null = null;
+
   constructor(private page: Page) {}
 
   /**
@@ -85,7 +89,8 @@ export class TwitterService {
       content: [{
         type: "text",
         text: `🔍 「${query}」の検索結果: ${result.content[0].text}`
-      }]
+      }],
+      tweets: result.tweets
     };
   }
 
@@ -96,6 +101,7 @@ export class TwitterService {
     const { maxTweets = 20, scrollDelay = 3000, readingTime = 2000 } = config;
     
     console.log("🤖 自動操作を開始します。人間によるカーソル操作はブロックされます。");
+    console.log(`🔍 現在のURL: ${await this.page.url()}`);
 
     const tweets: Tweet[] = [];
     let scrollCount = 0;
@@ -114,6 +120,7 @@ export class TwitterService {
         
         // ツイート情報を取得
         const pageTweets = await this.extractTweets();
+        console.log(`📊 このページで ${pageTweets.length} 件のツイートを抽出`);
         
         // 新しいツイートのみ追加
         for (const tweet of pageTweets) {
@@ -130,6 +137,12 @@ export class TwitterService {
         scrollCount++;
       }
 
+      // 収集したデータを保存
+      this.lastCollectedTweets = tweets;
+      
+      // ユニークな作者をログ出力
+      const uniqueAuthors = [...new Set(tweets.map(t => t.author))];
+      console.log(`👥 ユニークな作者: ${uniqueAuthors.join(', ')}`);
       console.log("✋ 自動操作が完了しました。カーソル操作権が戻りました。");
 
       return {
@@ -141,7 +154,8 @@ export class TwitterService {
                 `   👍 ${tweet.likes} 🔄 ${tweet.retweets} 💬 ${tweet.replies} | ${tweet.timestamp}`
               ).join('\n\n') +
               `\n\n💡 export_tweets_to_sheets でスプレッドシートに出力できます`
-        }]
+        }],
+        tweets: tweets // 実際のツイートデータを返す
       };
     } catch (error) {
       throw new Error(`ツイート収集に失敗しました: ${error}`);
@@ -186,6 +200,9 @@ export class TwitterService {
       };
     });
 
+    // プロフィールデータを保存
+    this.lastCollectedProfile = profile;
+
     return {
       content: [{
         type: "text",
@@ -197,7 +214,8 @@ export class TwitterService {
               `フォロー中: ${profile.following.toLocaleString()}人\n` +
               `自己紹介: ${profile.bio}\n\n` +
               `💡 export_profile_to_sheets でスプレッドシートに出力できます`
-      }]
+      }],
+      profile: profile
     };
   }
 
@@ -344,7 +362,7 @@ export class TwitterService {
             // フォールバック: @ユーザー名を探す
             const text = el.textContent || '';
             const userMatch = text.match(/@([a-zA-Z0-9_]+)/);
-            return userMatch ? userMatch[1] : `extracted_user_${index}`;
+            return userMatch ? userMatch[1] : `user_${index}`;
           };
 
           // 🔧 修正: エンゲージメント数の抽出
@@ -492,15 +510,13 @@ export class TwitterService {
    * 最後に収集したツイートを取得
    */
   getLastCollectedTweets(): Tweet[] {
-    // 実装は後でデータストレージと統合
-    return [];
+    return this.lastCollectedTweets;
   }
 
   /**
    * 最後に取得したプロフィールを取得
    */
   getLastCollectedProfile(): UserProfile | null {
-    // 実装は後でデータストレージと統合
-    return null;
+    return this.lastCollectedProfile;
   }
 }
