@@ -15,7 +15,8 @@
     "clean": "rm -rf build",
     "rebuild": "npm run clean && npm run build",
     "test": "npm run build && echo 'Testing MCP server...' && timeout 5s node build/index.js || echo 'Build successful!'",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "client": "ts-node src/client.ts"
   },
   "keywords": [
     "mcp",
